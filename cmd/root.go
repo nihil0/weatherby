@@ -19,12 +19,27 @@ var showTemp = &cobra.Command{
 
 		place, _ := cmd.Flags().GetString("place")
 		country, _ := cmd.Flags().GetString("country")
-		response, _ := http.Get("https://samples.openweathermap.org/data/2.5/weather?q=Brighton,uk&appid=9d1983b0c5fbd4fc34206018740f4c88")
-		foo, _ := ioutil.ReadAll(response.Body)
+		apiKey := os.Getenv("WEATHER_APP_ID")
+		url := fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?q=%s,%s&appid=%s", place, country, apiKey)
+		fmt.Println(url)
+		response, _ := http.Get(url)
+
+		if response.StatusCode != 200 {
+			fmt.Println("Sorry, couldn't find that city!")
+			os.Exit(1)
+		}
+
 		data := models.Main{}
-		json.Unmarshal(foo, &data)
-		fmt.Printf("I am showing you something: %v", data.Main.Temperature)
-		fmt.Printf("These are my args: %v, %v", place, country)
+		body, _ := ioutil.ReadAll(response.Body)
+		json.Unmarshal(body, &data)
+
+		fmt.Printf(
+			"\nWeather in %s\n\n"+
+				"Temperature: %.2f °C\n"+
+				"High: %.2f °C\n"+
+				"Low: %.2f °C\n\n"+
+				"", place, data.Main.Temperature-273, data.Main.High-273, data.Main.Low-273)
+
 	},
 }
 
@@ -42,7 +57,9 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	showTemp.Flags().StringP("place", "p", "helsinki", "City for showing temperature")
-	showTemp.Flags().StringP("country", "c", "finland", "Country in which the city is located. (Optional)")
+	showTemp.Flags().StringP("country", "c", "", "Country in which the city is located. (Optional)")
+	showTemp.MarkFlagRequired("place")
+	showTemp.MarkFlagRequired("country")
 
 	rootCmd.AddCommand(showTemp)
 }
